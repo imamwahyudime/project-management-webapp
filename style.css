@@ -1,0 +1,153 @@
+body {
+    font-family: sans-serif;
+    line-height: 1.6;
+    margin: 0;
+    padding: 20px;
+    background-color: #f4f4f4;
+    color: #333;
+}
+
+h1, h2, h3 {
+    color: #5a3e8a; /* A shade of purple */
+}
+
+.container {
+    display: flex; /* Use flexbox for side-by-side layout */
+    gap: 30px; /* Space between sections */
+    margin-top: 20px;
+    flex-wrap: wrap; /* Allow wrapping on smaller screens */
+}
+
+.projects-section,
+.tasks-section {
+    background-color: #fff;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    flex: 1; /* Allow sections to grow */
+    min-width: 300px; /* Minimum width before wrapping */
+}
+
+/* --- Forms --- */
+form {
+    margin-bottom: 20px;
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+form input[type="text"],
+form textarea {
+    flex-grow: 1; /* Allow input/textarea to fill space */
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 1rem;
+}
+
+form button {
+    padding: 10px 15px;
+    background-color: #5a3e8a;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 1rem;
+    transition: background-color 0.3s ease;
+}
+
+form button:hover {
+    background-color: #432e68; /* Darker shade on hover */
+}
+
+/* --- Lists --- */
+#project-list,
+#task-list {
+    list-style: none; /* Remove default list bullets */
+    padding: 0;
+    margin-top: 15px;
+}
+
+#project-list li,
+#task-list li {
+    background-color: #eef; /* Light background for list items */
+    border: 1px solid #ddd;
+    margin-bottom: 10px;
+    padding: 15px;
+    border-radius: 4px;
+    cursor: pointer; /* Indicate clickable items */
+    transition: background-color 0.2s ease, border-color 0.2s ease;
+    display: flex; /* Use flexbox for list item layout */
+    align-items: center;
+    justify-content: space-between; /* Space out content */
+}
+
+#project-list li:hover {
+    background-color: #dde;
+    border-color: #ccc;
+}
+
+/* Style for the project name within the list item */
+#project-list li span {
+    flex-grow: 1; /* Allow project name to take available space */
+    font-weight: bold;
+}
+
+
+/* Style for task list items */
+#task-list li {
+    display: flex;
+    align-items: center;
+}
+
+#task-list li input[type="checkbox"] {
+    margin-right: 10px;
+    cursor: pointer;
+    transform: scale(1.2); /* Make checkbox a bit bigger */
+}
+
+/* Style for completed tasks */
+#task-list li.completed {
+    text-decoration: line-through;
+    color: #888; /* Grey out completed tasks */
+    background-color: #f8f8f8;
+    border-color: #eee;
+}
+
+/* Style for messages */
+.message {
+    margin-top: 10px;
+    padding: 10px;
+    border-radius: 4px;
+}
+
+#project-message {
+    background-color: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+
+#task-message {
+     background-color: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+
+/* Basic responsiveness */
+@media (max-width: 768px) {
+    .container {
+        flex-direction: column; /* Stack sections vertically on small screens */
+        gap: 20px;
+    }
+
+    form {
+        flex-direction: column;
+    }
+
+    form input[type="text"],
+    form textarea,
+    form button {
+        width: 100%; /* Full width for form elements on small screens */
+        box-sizing: border-box; /* Include padding and border in the element's total width */
+    }
+}

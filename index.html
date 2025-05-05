@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple Project Management</title>
+    <link rel="stylesheet" href="style.css"> </head>
+<body>
+
+    <h1>Project Management Dashboard</h1>
+
+    <div class="container">
+        <div class="projects-section">
+            <h2>Projects</h2>
+            <div id="project-list">
+                <p>Loading projects...</p>
+            </div>
+
+            <h3>Create New Project</h3>
+            <form id="new-project-form">
+                <input type="text" id="project-name" placeholder="Project Name" required>
+                <button type="submit">Add Project</button>
+            </form>
+            <p id="project-message" class="message"></p>
+        </div>
+
+        <div class="tasks-section">
+            <h2 id="tasks-header">Tasks</h2>
+            <div id="task-list">
+                <p>Select a project to view tasks.</p>
+            </div>
+
+            <div id="new-task-form-container" style="display: none;">
+                 <h3>Add New Task</h3>
+                 <form id="new-task-form">
+                    <input type="hidden" id="current-project-id">
+                    <textarea id="task-description" placeholder="Task Description" required></textarea>
+                    <button type="submit">Add Task</button>
+                 </form>
+                 <p id="task-message" class="message"></p>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script> </body>
+</html>

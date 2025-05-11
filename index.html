@@ -4,7 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Simple Project Management</title>
-    <link rel="stylesheet" href="style.css"> </head>
+    <link rel="stylesheet" href="style.css">
+</head>
 <body>
 
     <h1>Project Management Dashboard</h1>
@@ -42,5 +43,21 @@
         </div>
     </div>
 
-    <script src="script.js"></script> </body>
+    <div class="deleted-projects-section container">
+        <h2>Deleted Projects (Recycle Bin)</h2>
+        <div id="deleted-project-list">
+            <p>No projects in recycle bin.</p>
+        </div>
+        <p id="deleted-project-message" class="message"></p>
+    </div>
+
+    <div class="recycle-bin-section container"> <h2>Task Recycle Bin</h2>
+        <div id="recycle-bin-list">
+            <p>Task recycle bin is empty.</p>
+        </div>
+        <p id="recycle-bin-message" class="message"></p>
+    </div>
+
+    <script src="script.js"></script>
+</body>
 </html>

@@ -8,25 +8,34 @@ body {
 }
 
 h1, h2, h3 {
-    color: #5a3e8a; /* A shade of purple */
+    color: #5a3e8a;
 }
 
 .container {
-    display: flex; /* Use flexbox for side-by-side layout */
-    gap: 30px; /* Space between sections */
+    display: flex;
+    gap: 30px;
     margin-top: 20px;
-    flex-wrap: wrap; /* Allow wrapping on smaller screens */
+    flex-wrap: wrap;
 }
 
 .projects-section,
-.tasks-section {
+.tasks-section,
+.recycle-bin-section,
+.deleted-projects-section { /* Added .deleted-projects-section */
     background-color: #fff;
     padding: 20px;
     border-radius: 8px;
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-    flex: 1; /* Allow sections to grow */
-    min-width: 300px; /* Minimum width before wrapping */
+    flex: 1;
+    min-width: 300px;
 }
+
+.recycle-bin-section,
+.deleted-projects-section { /* Added .deleted-projects-section */
+    margin-top: 30px;
+    flex-basis: 100%;
+}
+
 
 /* --- Forms --- */
 form {
@@ -38,7 +47,7 @@ form {
 
 form input[type="text"],
 form textarea {
-    flex-grow: 1; /* Allow input/textarea to fill space */
+    flex-grow: 1;
     padding: 10px;
     border: 1px solid #ccc;
     border-radius: 4px;
@@ -57,29 +66,36 @@ form button {
 }
 
 form button:hover {
-    background-color: #432e68; /* Darker shade on hover */
+    background-color: #432e68;
 }
 
 /* --- Lists --- */
 #project-list,
-#task-list {
-    list-style: none; /* Remove default list bullets */
+#task-list,
+#recycle-bin-list,
+#deleted-project-list { /* Added #deleted-project-list */
+    list-style: none;
     padding: 0;
     margin-top: 15px;
 }
 
 #project-list li,
-#task-list li {
-    background-color: #eef; /* Light background for list items */
+#task-list li,
+#recycle-bin-list li,
+#deleted-project-list li { /* Added #deleted-project-list li */
+    background-color: #eef;
     border: 1px solid #ddd;
     margin-bottom: 10px;
     padding: 15px;
     border-radius: 4px;
-    cursor: pointer; /* Indicate clickable items */
-    transition: background-color 0.2s ease, border-color 0.2s ease;
-    display: flex; /* Use flexbox for list item layout */
+    display: flex;
     align-items: center;
-    justify-content: space-between; /* Space out content */
+    justify-content: space-between;
+    transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+#project-list li {
+    cursor: pointer;
 }
 
 #project-list li:hover {
@@ -87,56 +103,136 @@ form button:hover {
     border-color: #ccc;
 }
 
-/* Style for the project name within the list item */
-#project-list li span {
-    flex-grow: 1; /* Allow project name to take available space */
-    font-weight: bold;
+#project-list li span,
+#task-list li .task-text,
+#recycle-bin-list li .task-text,
+#deleted-project-list li .project-name-deleted { /* Added #deleted-project-list styling */
+    flex-grow: 1;
+    margin-right: 10px;
+}
+#project-list li span,
+#deleted-project-list li .project-name-deleted { /* Added #deleted-project-list styling */
+     font-weight: bold;
 }
 
 
 /* Style for task list items */
-#task-list li {
-    display: flex;
-    align-items: center;
-}
-
 #task-list li input[type="checkbox"] {
     margin-right: 10px;
     cursor: pointer;
-    transform: scale(1.2); /* Make checkbox a bit bigger */
+    transform: scale(1.2);
 }
 
-/* Style for completed tasks */
-#task-list li.completed {
+#task-list li.completed .task-text {
     text-decoration: line-through;
-    color: #888; /* Grey out completed tasks */
+    color: #888;
+}
+#task-list li.completed {
     background-color: #f8f8f8;
     border-color: #eee;
 }
 
-/* Style for messages */
+
+/* --- Recycle Bin Specific Styles (Tasks) --- */
+#recycle-bin-list li {
+    background-color: #f0f0f0;
+    border-color: #ccc;
+}
+
+#recycle-bin-list li .task-status {
+    font-style: italic;
+    font-size: 0.9em;
+    margin-right: 15px;
+    padding: 3px 6px;
+    border-radius: 3px;
+}
+
+#recycle-bin-list li .task-status-finished {
+    background-color: #cce5ff;
+    color: #004085;
+}
+
+#recycle-bin-list li .task-status-deleted {
+    background-color: #f8d7da;
+    color: #721c24;
+}
+
+/* --- Deleted Projects List Specific Styles --- */
+#deleted-project-list li {
+    background-color: #e9ecef; /* Different background for deleted projects */
+    border-color: #ced4da;
+}
+
+
+/* --- Buttons --- */
+.delete-btn, .permanent-delete-btn, .recover-btn {
+    padding: 6px 10px;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    margin-left: 5px;
+    transition: background-color 0.3s ease;
+}
+
+.delete-btn { /* This is for "soft" delete (move to bin) */
+    background-color: #ffc107; /* Amber/Orange for move to bin */
+    color: #212529;
+}
+.delete-btn:hover {
+    background-color: #e0a800;
+}
+
+.permanent-delete-btn { /* For actual permanent deletion from bins */
+    background-color: #dc3545; /* Red */
+}
+.permanent-delete-btn:hover {
+    background-color: #c82333;
+}
+
+.recover-btn {
+    background-color: #28a745; /* Green */
+}
+.recover-btn:hover {
+    background-color: #218838;
+}
+.recover-btn:disabled, .delete-btn:disabled {
+    background-color: #ccc;
+    cursor: not-allowed;
+    color: #666;
+}
+
+
+/* --- Messages --- */
 .message {
     margin-top: 10px;
     padding: 10px;
     border-radius: 4px;
+    font-size: 0.9em;
+    min-height: 1.5em; /* Ensure space even if empty for a moment */
 }
 
-#project-message {
-    background-color: #d4edda;
+#project-message,
+#task-message,
+#recycle-bin-message,
+#deleted-project-message { /* Added #deleted-project-message */
+    background-color: #d4edda; /* Default success */
     color: #155724;
     border: 1px solid #c3e6cb;
 }
 
-#task-message {
-     background-color: #d4edda;
-    color: #155724;
-    border: 1px solid #c3e6cb;
+.message.error { /* Generic error styling for all message paragraphs */
+    background-color: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
 }
 
-/* Basic responsiveness */
+
+/* --- Responsiveness --- */
 @media (max-width: 768px) {
     .container {
-        flex-direction: column; /* Stack sections vertically on small screens */
+        flex-direction: column;
         gap: 20px;
     }
 
@@ -147,7 +243,60 @@ form button:hover {
     form input[type="text"],
     form textarea,
     form button {
-        width: 100%; /* Full width for form elements on small screens */
-        box-sizing: border-box; /* Include padding and border in the element's total width */
+        width: 100%;
+        box-sizing: border-box;
     }
+
+    #project-list li,
+    #task-list li,
+    #recycle-bin-list li,
+    #deleted-project-list li { /* Added #deleted-project-list */
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px; /* Add gap for stacked items */
+    }
+
+    .delete-btn, .permanent-delete-btn, .recover-btn {
+        margin-top: 5px;
+        margin-left: 0;
+        width: auto; /* Allow buttons to size to content, or 100% if preferred */
+        padding: 8px 12px; /* Slightly larger buttons on mobile */
+    }
+    #project-list li .delete-btn { /* Specific for project list delete button */
+         width: auto; /* Override general rule if needed */
+    }
+
+
+     #task-list li input[type="checkbox"] {
+        margin-bottom: 5px;
+    }
+
+    #recycle-bin-list li .task-status {
+        margin-bottom: 5px;
+    }
+    /* Ensure buttons in list items are grouped nicely */
+    #project-list li > span + .delete-btn,
+    #task-list li > span + .delete-btn, /* If tasks have inline delete */
+    #recycle-bin-list li > .task-text + .task-status + div, /* Assuming buttons are in a div */
+    #deleted-project-list li > .project-name-deleted + div {
+        margin-left: auto; /* Pushes button group to the right on wider screens */
+    }
+     @media (max-width: 768px) {
+        #project-list li > span + .delete-btn,
+        #task-list li > span + .delete-btn,
+        #recycle-bin-list li > .task-text + .task-status + div,
+        #deleted-project-list li > .project-name-deleted + div {
+            margin-left: 0; /* Reset for stacked layout */
+            width: 100%; /* Make button group take full width */
+            display: flex;
+            flex-direction: column; /* Stack buttons within the group */
+            gap: 5px;
+        }
+        #project-list li > span + .delete-btn button, /* if button is direct child */
+        #task-list li > span + .delete-btn button,
+        #recycle-bin-list li div button,
+        #deleted-project-list li div button {
+            width: 100%; /* Make individual buttons full width */
+        }
+     }
 }

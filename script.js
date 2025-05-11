@@ -1,5 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
-    // Get DOM elements
+    // DOM Elements
     const projectList = document.getElementById('project-list');
     const taskList = document.getElementById('task-list');
     const newProjectForm = document.getElementById('new-project-form');
@@ -12,256 +12,490 @@ document.addEventListener('DOMContentLoaded', () => {
     const taskDescriptionTextarea = document.getElementById('task-description');
     const taskMessage = document.getElementById('task-message');
 
-    let currentProjectId = null; // Variable to keep track of the currently selected project
+    // Recycle Bin Elements
+    const deletedProjectList = document.getElementById('deleted-project-list'); // New
+    const deletedProjectMessage = document.getElementById('deleted-project-message'); // New
+    const taskRecycleBinList = document.getElementById('recycle-bin-list'); // Renamed for clarity
+    const taskRecycleBinMessage = document.getElementById('recycle-bin-message'); // Renamed for clarity
 
-    // --- localStorage Utility Functions ---
-
-    const STORAGE_KEY = 'projectManagementData'; // A key to store our data in localStorage
+    let currentProjectId = null;
+    const STORAGE_KEY = 'projectManagementData_v3'; // <<-- IMPORTANT: New key for structure change
 
     function getStoredData() {
         const data = localStorage.getItem(STORAGE_KEY);
-        // If data exists in localStorage, parse it from JSON.
-        // Otherwise, return a new object with empty arrays for projects and tasks.
+        // Projects now have a 'status' field
         return data ? JSON.parse(data) : { projects: [], tasks: [] };
     }
 
     function saveStoredData(data) {
-        // Convert our JavaScript object (containing projects and tasks) into a JSON string
-        // and save it in localStorage under the defined key.
         localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+        // Refresh all relevant UI parts
+        fetchProjectsAndTasks(); // Consolidated refresh logic
+        displayDeletedProjects();
+        displayTaskRecycleBin();
     }
-
-
-    // --- Project Functions ---
-
-    // Fetch and display all projects from localStorage
-    function fetchProjects() {
+    
+    function fetchProjectsAndTasks() {
         const data = getStoredData();
-        displayProjects(data.projects);
-    }
+        displayProjects(data.projects.filter(p => p.status === 'active'));
 
-    // Display projects in the list
-    function displayProjects(projects) {
-        projectList.innerHTML = ''; // Clear current list
-        if (projects.length === 0) {
-            projectList.innerHTML = '<p>No projects found. Create one!</p>';
-            // Hide task section if no projects exist
+        const activeProjects = data.projects.filter(p => p.status === 'active');
+        let projectToSelect = null;
+
+        if (currentProjectId) {
+            projectToSelect = activeProjects.find(p => p.id === currentProjectId);
+        }
+        if (!projectToSelect && activeProjects.length > 0) {
+            projectToSelect = activeProjects[0];
+        }
+
+        if (projectToSelect) {
+            selectProject(projectToSelect.id, projectToSelect.name);
+        } else {
+            currentProjectId = null;
+            currentProjectIdInput.value = '';
             tasksHeader.textContent = 'Tasks';
             taskList.innerHTML = '<p>Select a project to view tasks.</p>';
             newTaskFormContainer.style.display = 'none';
-            currentProjectId = null;
-            currentProjectIdInput.value = '';
-            return;
         }
-        projects.forEach(project => {
-            const li = document.createElement('li');
-            li.dataset.projectId = project.id; // Store project ID on the element
-            li.innerHTML = `<span>${escapeHTML(project.name)}</span>`; // Basic sanitization
-            li.addEventListener('click', () => selectProject(project.id, project.name));
-            projectList.appendChild(li);
-        });
-         // Auto-select the first project if any exist and no project is currently selected,
-         // or re-select the previously selected project if it still exists.
-         if (currentProjectId === null || !projects.find(p => p.id === currentProjectId)) {
-              if (projects.length > 0) {
-                 selectProject(projects[0].id, projects[0].name);
-              } else {
-                 // If no projects at all, clear task section
-                 tasksHeader.textContent = 'Tasks';
-                 taskList.innerHTML = '<p>Select a project to view tasks.</p>';
-                 newTaskFormContainer.style.display = 'none';
-                 currentProjectId = null;
-                 currentProjectIdInput.value = '';
-              }
-         } else {
-             const previouslySelected = projectList.querySelector(`li[data-project-id="${currentProjectId}"]`);
-             if (previouslySelected) {
-                 previouslySelected.classList.add('selected');
-             } else if (projects.length > 0) {
-                  // If the previously selected project no longer exists (e.g., deleted), select the first one
-                  selectProject(projects[0].id, projects[0].name);
-             } else {
-                 // If no projects at all, clear task section
-                 tasksHeader.textContent = 'Tasks';
-                 taskList.innerHTML = '<p>Select a project to view tasks.</p>';
-                 newTaskFormContainer.style.display = 'none';
-                 currentProjectId = null;
-                 currentProjectIdInput.value = '';
-             }
-         }
     }
 
-    // Handle project selection
-    function selectProject(projectId, projectName) {
-        // Remove 'selected' class from previously selected project
-        const previouslySelected = projectList.querySelector(`li.selected`);
-        if (previouslySelected) {
-            previouslySelected.classList.remove('selected');
-        }
 
-        // Add 'selected' class to the clicked project
-        const currentSelected = projectList.querySelector(`li[data-project-id="${projectId}"]`);
-        if (currentSelected) {
-            currentSelected.classList.add('selected');
+    function displayMessage(element, text, isError = false) {
+        element.textContent = text;
+        element.className = 'message'; // Reset classes
+        if (isError) {
+            element.classList.add('error');
+        }
+        // Clear message after a delay (CSS handles actual styling)
+        setTimeout(() => {
+            element.textContent = '';
+            element.classList.remove('error');
+        }, 4000);
+    }
+
+    // --- Project Functions ---
+    function displayProjects(activeProjects) {
+        projectList.innerHTML = '';
+        if (activeProjects.length === 0) {
+            projectList.innerHTML = '<p>No active projects found. Create one!</p>';
+            return;
+        }
+        activeProjects.forEach(project => {
+            const li = document.createElement('li');
+            li.dataset.projectId = project.id;
+            if (project.id === currentProjectId) {
+                li.classList.add('selected');
+            }
+
+            const projectNameSpan = document.createElement('span');
+            projectNameSpan.textContent = escapeHTML(project.name);
+            projectNameSpan.addEventListener('click', () => selectProject(project.id, project.name));
+            li.appendChild(projectNameSpan);
+
+            // "Move to Recycle Bin" button for projects
+            const softDeleteButton = document.createElement('button');
+            softDeleteButton.textContent = 'Delete'; // Text implies move to bin
+            softDeleteButton.title = "Move project to Recycle Bin";
+            softDeleteButton.classList.add('delete-btn'); // Uses existing style, might need adjustment
+            softDeleteButton.addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (confirm(`Are you sure you want to move project "${escapeHTML(project.name)}" to the recycle bin? Its tasks will also be moved to the task recycle bin.`)) {
+                    softDeleteProject(project.id);
+                }
+            });
+            li.appendChild(softDeleteButton);
+            projectList.appendChild(li);
+        });
+    }
+
+    function selectProject(projectId, projectName) {
+        // Deselect previously selected project
+        const previouslySelectedLi = projectList.querySelector(`li.selected`);
+        if (previouslySelectedLi) {
+            previouslySelectedLi.classList.remove('selected');
+        }
+        // Select new project
+        const currentSelectedLi = projectList.querySelector(`li[data-project-id="${projectId}"]`);
+        if (currentSelectedLi) {
+            currentSelectedLi.classList.add('selected');
+        } else {
+            // If the selected project is not in the active list (e.g. after recovery and refresh)
+            // this indicates a state mismatch or need for more robust refresh
+            console.warn("Selected project LI not found in active list:", projectId);
         }
 
         currentProjectId = projectId;
-        currentProjectIdInput.value = projectId; // Update hidden input
-        tasksHeader.textContent = `Tasks for "${escapeHTML(projectName)}"`; // Update tasks header
-        newTaskFormContainer.style.display = 'block'; // Show the new task form
-        fetchTasks(projectId); // Fetch tasks for the selected project
-         taskMessage.textContent = ''; // Clear task messages on project switch
+        currentProjectIdInput.value = projectId;
+        tasksHeader.textContent = `Tasks for "${escapeHTML(projectName)}"`;
+        newTaskFormContainer.style.display = 'block';
+        fetchTasksForCurrentProject();
+        taskMessage.textContent = '';
     }
 
-    // Handle new project form submission
     newProjectForm.addEventListener('submit', (e) => {
-        e.preventDefault(); // Prevent default form submission
+        e.preventDefault();
         const projectName = projectNameInput.value.trim();
-
         if (projectName) {
             const data = getStoredData();
             const newProject = {
-                // Generate a simple unique ID. Using timestamp is common for local data.
-                // For a real application, a more robust ID generation might be needed.
                 id: Date.now(),
                 name: projectName,
-                createdAt: new Date().toISOString() // Store creation time
+                status: 'active', // New projects are active
+                createdAt: new Date().toISOString()
             };
             data.projects.push(newProject);
-            saveStoredData(data); // Save the updated data to localStorage
-
-            projectMessage.textContent = `Project "${escapeHTML(projectName)}" added successfully!`;
-            projectMessage.style.backgroundColor = '#d4edda'; // Success color
-            projectMessage.style.color = '#155724';
-            projectNameInput.value = ''; // Clear the input field
-            fetchProjects(); // Refresh the project list to show the new project
+            saveStoredData(data);
+            displayMessage(projectMessage, `Project "${escapeHTML(projectName)}" added successfully!`);
+            projectNameInput.value = '';
+            // Auto-select the new project
+            if (newProject.id) selectProject(newProject.id, newProject.name);
         } else {
-             projectMessage.textContent = 'Project name cannot be empty.';
-             projectMessage.style.backgroundColor = '#fff3cd'; // Warning color
-             projectMessage.style.color = '#856404';
+            displayMessage(projectMessage, 'Project name cannot be empty.', true);
         }
     });
 
+    function softDeleteProject(projectId) {
+        let data = getStoredData();
+        const projectIndex = data.projects.findIndex(p => p.id === projectId);
+        if (projectIndex === -1) {
+            displayMessage(projectMessage, "Error: Project not found.", true);
+            return;
+        }
+
+        const projectName = data.projects[projectIndex].name;
+        data.projects[projectIndex].status = 'deleted'; // Soft delete project
+        data.projects[projectIndex].deletedAt = new Date().toISOString();
+
+
+        // Mark associated tasks as 'deleted' and note they were deleted due to project soft delete
+        data.tasks = data.tasks.map(task => {
+            if (task.projectId === projectId) {
+                return {
+                    ...task,
+                    status: 'deleted',
+                    isCompleted: false,
+                    deletedReason: 'project_soft_deleted', // Specific reason
+                    deletedAt: new Date().toISOString()
+                };
+            }
+            return task;
+        });
+
+        if (currentProjectId === projectId) { // If the deleted project was selected
+            currentProjectId = null;
+        }
+        saveStoredData(data);
+        displayMessage(projectMessage, `Project "${escapeHTML(projectName)}" moved to Recycle Bin. Its tasks also moved to Task Recycle Bin.`);
+    }
 
     // --- Task Functions ---
-
-    // Fetch and display tasks for a project from localStorage
-    function fetchTasks(projectId) {
+    function fetchTasksForCurrentProject() {
+        if (!currentProjectId) {
+            taskList.innerHTML = '<p>Select a project to view tasks.</p>';
+            return;
+        }
         const data = getStoredData();
-        // Filter tasks array to get only tasks belonging to the selected project
-        const projectTasks = data.tasks.filter(task => task.projectId === projectId);
+        const projectTasks = data.tasks.filter(task => task.projectId === currentProjectId && task.status === 'active');
         displayTasks(projectTasks);
     }
 
-    // Display tasks in the list
     function displayTasks(tasks) {
-        taskList.innerHTML = ''; // Clear current list
+        taskList.innerHTML = '';
         if (tasks.length === 0) {
-            taskList.innerHTML = '<p>No tasks yet. Add one!</p>';
+            taskList.innerHTML = '<p>No active tasks yet. Add one!</p>';
             return;
         }
-        // Sort tasks by creation date (optional, but good practice)
         tasks.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
-
         tasks.forEach(task => {
             const li = document.createElement('li');
-            li.dataset.taskId = task.id; // Store task ID on the element
-            if (task.isCompleted) { // Use 'isCompleted' based on localStorage structure
-                li.classList.add('completed');
-            }
-            li.innerHTML = `
-                <input type="checkbox" ${task.isCompleted ? 'checked' : ''}>
-                <span>${escapeHTML(task.description)}</span>
-            `;
+            li.dataset.taskId = task.id;
+            if (task.isCompleted) li.classList.add('completed'); // For visual strike-through
 
-            // Add event listener to the checkbox to toggle completion status
-            const checkbox = li.querySelector('input[type="checkbox"]');
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.checked = task.isCompleted;
             checkbox.addEventListener('change', () => toggleTaskComplete(task.id, checkbox.checked));
+            li.appendChild(checkbox);
 
+            const taskTextSpan = document.createElement('span');
+            taskTextSpan.classList.add('task-text');
+            taskTextSpan.textContent = escapeHTML(task.description);
+            li.appendChild(taskTextSpan);
+
+            const softDeleteTaskButton = document.createElement('button');
+            softDeleteTaskButton.textContent = 'Delete';
+            softDeleteTaskButton.title = "Move task to Recycle Bin";
+            softDeleteTaskButton.classList.add('delete-btn');
+            softDeleteTaskButton.addEventListener('click', () => {
+                if (confirm(`Are you sure you want to move task "${escapeHTML(task.description)}" to the task recycle bin?`)) {
+                    softDeleteIndividualTask(task.id);
+                }
+            });
+            li.appendChild(softDeleteTaskButton);
             taskList.appendChild(li);
         });
     }
 
-    // Handle new task form submission
     newTaskForm.addEventListener('submit', (e) => {
-        e.preventDefault(); // Prevent default form submission
+        e.preventDefault();
         const taskDescription = taskDescriptionTextarea.value.trim();
-        const projectId = currentProjectIdInput.value; // Get project ID from hidden input
-
+        const projectId = parseInt(currentProjectIdInput.value);
         if (taskDescription && projectId) {
             const data = getStoredData();
+            if (!data.projects.some(p => p.id === projectId && p.status === 'active')) {
+                displayMessage(taskMessage, 'Cannot add task: Selected project is not active or does not exist.', true);
+                return;
+            }
             const newTask = {
-                id: Date.now(), // Simple unique ID
-                projectId: parseInt(projectId), // Ensure projectId is a number
-                description: taskDescription,
-                isCompleted: false, // New tasks are not completed by default
-                createdAt: new Date().toISOString() // Store creation time
+                id: Date.now(), projectId: projectId, description: taskDescription,
+                isCompleted: false, status: 'active', createdAt: new Date().toISOString()
             };
             data.tasks.push(newTask);
-            saveStoredData(data); // Save the updated data to localStorage
-
-             taskMessage.textContent = `Task added successfully!`;
-             taskMessage.style.backgroundColor = '#d4edda'; // Success color
-             taskMessage.style.color = '#155724';
-             taskDescriptionTextarea.value = ''; // Clear the input field
-             fetchTasks(currentProjectId); // Refresh the task list for the current project
+            saveStoredData(data);
+            displayMessage(taskMessage, `Task added successfully!`);
+            taskDescriptionTextarea.value = '';
         } else {
-             taskMessage.textContent = 'Task description cannot be empty.';
-             taskMessage.style.backgroundColor = '#fff3cd'; // Warning color
-             taskMessage.style.color = '#856404';
+            displayMessage(taskMessage, 'Task description cannot be empty and an active project must be selected.', true);
         }
     });
 
-    // Handle marking task as complete/incomplete
-    function toggleTaskComplete(taskId, isCompleted) {
-        const data = getStoredData();
-        // Find the task in the tasks array by its ID
-        const task = data.tasks.find(task => task.id === taskId);
-
-        if (task) {
-            task.isCompleted = isCompleted; // Update the completion status
-            saveStoredData(data); // Save the updated data to localStorage
-
-            // Optimistic update: visually update the task immediately without re-fetching
-            const taskElement = taskList.querySelector(`li[data-task-id="${taskId}"]`);
-            if (taskElement) {
-                if (isCompleted) {
-                    taskElement.classList.add('completed');
-                } else {
-                    taskElement.classList.remove('completed');
-                }
+    function toggleTaskComplete(taskId, isChecked) {
+        let data = getStoredData();
+        const taskIndex = data.tasks.findIndex(t => t.id === taskId);
+        if (taskIndex > -1) {
+            data.tasks[taskIndex].isCompleted = isChecked;
+            if (isChecked && data.tasks[taskIndex].status === 'active') { // If marked complete from active list
+                data.tasks[taskIndex].status = 'completed'; // Move to task recycle bin as 'completed'
+                displayMessage(taskMessage, `Task marked as completed and moved to Task Recycle Bin.`);
+            } else if (!isChecked && data.tasks[taskIndex].status === 'completed') { // If unmarked from (hypothetically) recycle bin
+                data.tasks[taskIndex].status = 'active'; // Restore to active
+                displayMessage(taskMessage, `Task restored to active tasks.`);
             }
-             // Optional: Display a quick message
-             // taskMessage.textContent = `Task marked as ${isCompleted ? 'completed' : 'incomplete'}.`;
-             // taskMessage.style.backgroundColor = '#d4edda';
-             // taskMessage.style.color = '#155724';
-             // setTimeout(() => taskMessage.textContent = '', 2000); // Clear message after 2 seconds
-
+            saveStoredData(data);
         } else {
-            console.error('Task not found for toggling completion:', taskId);
-             // If task not found (shouldn't happen if IDs are managed correctly), revert the visual change
-             const taskElement = taskList.querySelector(`li[data-task-id="${taskId}"]`);
-             if (taskElement) {
-                  taskElement.querySelector('input[type="checkbox"]').checked = !isCompleted;
-             }
-             // Display a temporary error message
-             const tempMessage = document.createElement('p');
-             tempMessage.textContent = `Error updating task: Task not found.`;
-             tempMessage.classList.add('message');
-             tempMessage.style.backgroundColor = '#f8d7da';
-             tempMessage.style.color = '#721c24';
-             tempMessage.style.position = 'absolute'; // Or fixed, to not disrupt layout
-             tempMessage.style.right = '20px';
-             tempMessage.style.bottom = '20px';
-             document.body.appendChild(tempMessage);
-             setTimeout(() => {
-                 tempMessage.remove();
-             }, 5000); // Remove message after 5 seconds
+            displayMessage(taskMessage, 'Error updating task: Task not found.', true);
         }
     }
 
-    // --- Helper Function for Basic HTML Sanitization ---
-    // Prevents displaying HTML tags entered by users directly as HTML.
+    function softDeleteIndividualTask(taskId) {
+        let data = getStoredData();
+        const taskIndex = data.tasks.findIndex(t => t.id === taskId);
+        if (taskIndex > -1) {
+            data.tasks[taskIndex].status = 'deleted';
+            data.tasks[taskIndex].isCompleted = false;
+            data.tasks[taskIndex].deletedReason = 'individual_deletion';
+            data.tasks[taskIndex].deletedAt = new Date().toISOString();
+            saveStoredData(data);
+            displayMessage(taskMessage, `Task moved to Task Recycle Bin.`);
+        } else {
+            displayMessage(taskMessage, 'Error deleting task: Task not found.', true);
+        }
+    }
+
+    // --- DELETED PROJECTS (Recycle Bin for Projects) ---
+    function displayDeletedProjects() {
+        deletedProjectList.innerHTML = '';
+        const data = getStoredData();
+        const softDeletedProjects = data.projects.filter(project => project.status === 'deleted');
+
+        if (softDeletedProjects.length === 0) {
+            deletedProjectList.innerHTML = '<p>No projects in recycle bin.</p>';
+            return;
+        }
+        softDeletedProjects.sort((a,b) => new Date(b.deletedAt) - new Date(a.deletedAt)); // Show newest deleted first
+
+        softDeletedProjects.forEach(project => {
+            const li = document.createElement('li');
+            li.dataset.projectId = project.id;
+
+            const projectNameSpan = document.createElement('span');
+            projectNameSpan.classList.add('project-name-deleted');
+            projectNameSpan.textContent = escapeHTML(project.name);
+            li.appendChild(projectNameSpan);
+
+            const buttonsDiv = document.createElement('div');
+            buttonsDiv.style.marginLeft = 'auto';
+
+            const recoverProjectButton = document.createElement('button');
+            recoverProjectButton.textContent = 'Recover Project';
+            recoverProjectButton.classList.add('recover-btn');
+            recoverProjectButton.addEventListener('click', () => recoverProject(project.id));
+            buttonsDiv.appendChild(recoverProjectButton);
+
+            const permDeleteProjectButton = document.createElement('button');
+            permDeleteProjectButton.textContent = 'Delete Permanently';
+            permDeleteProjectButton.classList.add('permanent-delete-btn');
+            permDeleteProjectButton.addEventListener('click', () => {
+                if (confirm(`PERMANENTLY DELETE project "${escapeHTML(project.name)}" and ALL its tasks? This cannot be undone.`)) {
+                    permanentlyDeleteProject(project.id);
+                }
+            });
+            buttonsDiv.appendChild(permDeleteProjectButton);
+            li.appendChild(buttonsDiv);
+            deletedProjectList.appendChild(li);
+        });
+    }
+
+    function recoverProject(projectId) {
+        let data = getStoredData();
+        const projectIndex = data.projects.findIndex(p => p.id === projectId);
+        if (projectIndex === -1) {
+            displayMessage(deletedProjectMessage, "Error: Project to recover not found.", true);
+            return;
+        }
+        
+        const projectName = data.projects[projectIndex].name;
+        data.projects[projectIndex].status = 'active';
+        delete data.projects[projectIndex].deletedAt;
+
+        // Also recover associated tasks that were deleted due to this project's soft deletion
+        data.tasks = data.tasks.map(task => {
+            if (task.projectId === projectId && task.deletedReason === 'project_soft_deleted') {
+                return {
+                    ...task,
+                    status: 'active', // Make tasks active again
+                    // isCompleted remains as it was before project deletion
+                    deletedReason: undefined,
+                    deletedAt: undefined
+                };
+            }
+            return task;
+        });
+
+        saveStoredData(data);
+        displayMessage(deletedProjectMessage, `Project "${escapeHTML(projectName)}" and its tasks recovered.`);
+        // Attempt to re-select the recovered project if no other project is active
+        if (!currentProjectId) {
+            selectProject(projectId, projectName);
+        }
+    }
+
+    function permanentlyDeleteProject(projectId) {
+        let data = getStoredData();
+        const project = data.projects.find(p => p.id === projectId);
+        if (!project) {
+            displayMessage(deletedProjectMessage, "Error: Project to permanently delete not found.", true);
+            return;
+        }
+        const projectName = project.name;
+
+        // Permanently delete the project
+        data.projects = data.projects.filter(p => p.id !== projectId);
+        // Permanently delete ALL associated tasks, regardless of their status in task recycle bin
+        data.tasks = data.tasks.filter(task => task.projectId !== projectId);
+
+        if (currentProjectId === projectId) { // If the hard-deleted project was selected
+            currentProjectId = null;
+        }
+        saveStoredData(data);
+        displayMessage(deletedProjectMessage, `Project "${escapeHTML(projectName)}" and all its tasks permanently deleted.`);
+    }
+
+
+    // --- TASK RECYCLE BIN Functions ---
+    function displayTaskRecycleBin() {
+        taskRecycleBinList.innerHTML = '';
+        const data = getStoredData();
+        const recycledTasks = data.tasks.filter(task => task.status === 'completed' || task.status === 'deleted');
+
+        if (recycledTasks.length === 0) {
+            taskRecycleBinList.innerHTML = '<p>Task recycle bin is empty.</p>';
+            return;
+        }
+        recycledTasks.sort((a, b) => new Date(b.deletedAt || b.createdAt) - new Date(a.deletedAt || a.createdAt));
+
+        recycledTasks.forEach(task => {
+            const li = document.createElement('li');
+            li.dataset.taskId = task.id;
+
+            const taskTextSpan = document.createElement('span');
+            taskTextSpan.classList.add('task-text');
+            taskTextSpan.textContent = escapeHTML(task.description);
+            li.appendChild(taskTextSpan);
+
+            const statusSpan = document.createElement('span');
+            statusSpan.classList.add('task-status');
+            if (task.status === 'completed') {
+                statusSpan.textContent = 'Finished';
+                statusSpan.classList.add('task-status-finished');
+            } else if (task.status === 'deleted') {
+                statusSpan.textContent = 'Deleted';
+                if (task.deletedReason === 'project_soft_deleted') {
+                    statusSpan.textContent += ' (Project in Bin)';
+                } else if (task.deletedReason === 'individual_deletion') {
+                     // statusSpan.textContent += ' (Individually)';
+                }
+                statusSpan.classList.add('task-status-deleted');
+            }
+            li.appendChild(statusSpan);
+
+            const buttonsDiv = document.createElement('div');
+            buttonsDiv.style.marginLeft = 'auto';
+
+            const recoverTaskButton = document.createElement('button');
+            recoverTaskButton.textContent = 'Recover Task';
+            recoverTaskButton.classList.add('recover-btn');
+            const parentProject = data.projects.find(p => p.id === task.projectId);
+            if (!parentProject || parentProject.status !== 'active') {
+                recoverTaskButton.disabled = true;
+                recoverTaskButton.title = "Parent project is not active or does not exist.";
+            }
+            recoverTaskButton.addEventListener('click', () => recoverIndividualTask(task.id));
+            buttonsDiv.appendChild(recoverTaskButton);
+
+            const permDeleteTaskButton = document.createElement('button');
+            permDeleteTaskButton.textContent = 'Delete Permanently';
+            permDeleteTaskButton.classList.add('permanent-delete-btn');
+            permDeleteTaskButton.addEventListener('click', () => {
+                if (confirm(`PERMANENTLY DELETE task "${escapeHTML(task.description)}"? This cannot be undone.`)) {
+                    permanentlyDeleteTask(task.id);
+                }
+            });
+            buttonsDiv.appendChild(permDeleteTaskButton);
+            li.appendChild(buttonsDiv);
+            taskRecycleBinList.appendChild(li);
+        });
+    }
+
+    function recoverIndividualTask(taskId) {
+        let data = getStoredData();
+        const taskIndex = data.tasks.findIndex(t => t.id === taskId);
+        if (taskIndex === -1) {
+            displayMessage(taskRecycleBinMessage, "Error: Task to recover not found.", true);
+            return;
+        }
+
+        const taskToRecover = data.tasks[taskIndex];
+        const parentProject = data.projects.find(p => p.id === taskToRecover.projectId);
+        if (!parentProject || parentProject.status !== 'active') {
+            displayMessage(taskRecycleBinMessage, "Cannot recover task: Parent project is not active or does not exist.", true);
+            return;
+        }
+
+        taskToRecover.status = 'active';
+        // isCompleted status remains, reflecting its state before hitting the bin (true if 'completed', false if 'deleted')
+        delete taskToRecover.deletedReason;
+        delete taskToRecover.deletedAt;
+
+        saveStoredData(data);
+        displayMessage(taskRecycleBinMessage, `Task "${escapeHTML(taskToRecover.description)}" recovered.`);
+    }
+
+    function permanentlyDeleteTask(taskId) {
+        let data = getStoredData();
+        const taskCount = data.tasks.length;
+        data.tasks = data.tasks.filter(task => task.id !== taskId);
+
+        if (data.tasks.length < taskCount) {
+            saveStoredData(data);
+            displayMessage(taskRecycleBinMessage, `Task permanently deleted.`);
+        } else {
+            displayMessage(taskRecycleBinMessage, `Error permanently deleting task: Task not found.`, true);
+        }
+    }
+
+    // --- Helper Function ---
     function escapeHTML(str) {
         const div = document.createElement('div');
         div.appendChild(document.createTextNode(str));
@@ -269,5 +503,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- Initial Load ---
-    fetchProjects(); // Load projects from localStorage when the page loads
+    fetchProjectsAndTasks();
+    displayDeletedProjects();
+    displayTaskRecycleBin();
 });
